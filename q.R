@@ -8,8 +8,7 @@ coffee_ratings <- tuesdata$coffee_ratings
 #Hay una variable balance, podemos tambien 
 #compararla con atributos. ¿Qué explica el balance?
 #Altitud vs calidad (atributos) ¿Como influye la altitud?
-#Defects vs Balance o vs lo dulce que es
-#Region y cupper_points, que entiendo que es la calificacion general.
+
 
 #UN BUBLE MAP: ponemos los paises y las bubles son las calificaciones:
 #Voy a verificar si hay datos NA en alguna de las dos columnas a usar:
@@ -108,4 +107,48 @@ coffee_ratings$country_clean <- countrycode(
 #2: Some strings were matched more than once, and therefore set to <NA> in the result: United States (Puerto Rico),Puerto Rico,United States
 
 
-#SEGUNDA GRAFICA:
+#SEGUNDA GRAFICA:radar chart, spider chart.
+#Tiene que ser con datos numéricos, en nuestro caso, puede ser con:
+#aroma, flavor, acidity, lo que no entiendo es qué va en el centro
+#Recomiendan máximo 3 variables
+#Para el chart necesito minimos y maximos en el df
+class(coffee_ratings)
+
+library(fmsb)
+library(RColorBrewer)
+library(scales)
+
+coffee_ratings <- as.data.frame(coffee_ratings) # convertir tibble a data.frame
+
+# Seleccionar columnas
+coffee_ratings2 <- coffee_ratings[, c("aroma","flavor","acidity")]
+
+# filas max y min
+fila_max <- apply(coffee_ratings2, 2, max)
+fila_min <- apply(coffee_ratings2, 2, min)
+
+# Data frame final para el radar chart
+coffee_ratings_spider <- rbind(fila_max, fila_min, coffee_ratings2)
+
+# Asignar nombres de fila correctos
+rownames(coffee_ratings_spider) <- c("Max","Min","Cafe1","Cafe2","Cafe3")
+
+# Colores
+coul <- brewer.pal(3, "BuPu")
+colors_border <- coul
+colors_in <- alpha(coul,0.3)
+
+# Radar chart 
+radarchart(coffee_ratings_spider, axistype=0, maxmin=TRUE,
+           pcol=colors_border, pfcol=colors_in, plwd=4, plty=1,
+           cglcol="grey", cglty=1, axislabcol="black", cglwd=0.8,
+           vlcex=0.8)
+
+# Leyenda 
+legend(x=0.7, y=1, legend=rownames(coffee_ratings_spider[-c(1,2),]),
+       bty="n", pch=20, col=colors_in, text.col="grey",
+       cex=1.2, pt.cex=3)
+
+
+#Tercera grafica: variety con la altitud? 
+
