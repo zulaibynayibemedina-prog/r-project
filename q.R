@@ -151,4 +151,54 @@ legend(x=0.7, y=1, legend=rownames(coffee_ratings_spider[-c(1,2),]),
 
 
 #Tercera grafica: variety con la altitud? 
+#Yo diria que una ridgeline plot
+#En nuestro caso en el eje x va altitude_mean_meters
+#En el eje y va variety que es categorica
+#Debemos primero limpiar los datos para dejarlos sin NAs
 
+
+install.packages("ggridges")
+install.packages("ggplot2")
+install.packages("MetBrewer")
+install.packages("glue")
+install.packages("dplyr")
+library(ggridges)
+library(dplyr)
+library(ggplot2)
+library(MetBrewer)
+library(glue)
+
+
+#Flitro las filas donde no hay NAs y creo otro df para hacer la grafica
+coffee_plot3<-coffee_ratings[!is.na(coffee_ratings$variety) & !is.na(coffee_ratings$altitude_mean_meters),]
+head(coffee_plot3)
+#Miro primero maximos y minimos:
+min(coffee_plot3$altitude_mean_meters)
+max(coffee_plot3$altitude_mean_meters) #190164, entonces hago que el eje x vaya hasta 200000
+#Calculo la altitud media segun cada variedad de cafe:
+mean_altitudes <- tapply(
+  coffee_plot3$altitude_mean_meters,
+  coffee_plot3$variety,
+  mean
+)
+#Ahora si organizo las variedades de cafe según la media de arriba:
+ordenadas<-names(sort(mean_altitudes))
+#Convierto en factor:
+coffee_plot3$variety <- factor(coffee_plot3$variety, levels = ordenadas)
+
+windows(width = 10, height = 7)
+ggplot(coffee_plot3, aes(
+  x = altitude_mean_meters,
+  y = variety,
+  fill = variety
+)) +
+  geom_density_ridges(alpha = 0.8) +
+  scale_x_continuous(limits = c(0, 190180)) + #Pongo esto para el maximo en x 
+  theme_minimal() +
+  guides(fill = "none") +
+  labs(
+    title = "Altitud de cultivo por variedad de café",
+    x = "Altitud media (m)",
+    y = "Variedad"
+  )
+#Esta grafica se ve fatal pero no sé comoa arreglarla porque seguro algo esta mal.
