@@ -202,3 +202,37 @@ ggplot(coffee_plot3, aes(
     y = "Variedad"
   )
 #Esta grafica se ve fatal pero no sé comoa arreglarla porque seguro algo esta mal.
+
+
+##Boceto de la funcion del PUNTO 1: 
+champions <- function(country, years) {
+#Primero creo una lista con los paises y la urls   
+  urls <- list(
+    "Colombia"  = "URLColombia",
+  )
+#Verificar que el pais este en la lista: 
+  if (!(country %in% names(urls))) {
+    stop("El país elegido no está disponible.")
+  }
+  # Empezamos web scrapping con rvest.
+  # Sacamos la tabla principal donde aparecen los campeones.
+  # html_table() convierte la tabla HTML en un data frame.
+  tabla <- rvest::html_table(
+    rvest::read_html(urls[[country]])
+  )[[1]]
+  #teniendo en cuenta que las tablas pueden tener nombres de columna distintos
+  #renombramos las columnas de Año y Campeón.
+  names(tabla)[1:2] <- c("Year", "Champion")
+  
+  # Depende de los años que diga el usuario, se filtra:
+  # Solo nos quedamos con las filas con el año que  esté en 'years'.
+  tabla_filtrada <- subset(tabla, Year %in% years)
+  
+  #Tabla de frecuencia:
+  # Frecuencia simple
+  # y calculamos el porcentaje
+  freq <- as.data.frame(table(tabla_filtrada$Champion))
+  freq$Percent <- round(freq$Freq / sum(freq$Freq) * 100, 2)
+  #Deberíamos obtener una tabla de frecuencias:
+  return(freq)
+}
