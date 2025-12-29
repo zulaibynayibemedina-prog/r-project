@@ -180,34 +180,55 @@ coffee_ratings$country_clean <- countrycode(
   warn = TRUE
 )
 ###############################################
-# Cargar paquetes necesarios
 library(fmsb)
 library(RColorBrewer)
 library(scales)
 
-# Asegurar que el dataset esté en formato data.frame
+# Asegurar formato data.frame
 coffee_ratings <- as.data.frame(coffee_ratings)
 
-# Seleccionar las columnas numéricas relevantes
+# Seleccionar columnas numéricas
 coffee_ratings2 <- coffee_ratings[, c("aroma", "flavor", "acidity")]
 
-# Elegir tres cafés con perfiles distintos
-muestras <- coffee_ratings2[c(10, 200, 500), ]
-rownames(muestras) <- c("Cafe1", "Cafe2", "Cafe3")
+# Seleccionar cafés extremos para cada atributo
+cafe_aroma_high  <- coffee_ratings2[which.max(coffee_ratings2$aroma), ]
+cafe_aroma_low   <- coffee_ratings2[which.min(coffee_ratings2$aroma), ]
 
-# Calcular fila de máximos y mínimos para definir la escala del gráfico
+cafe_flavor_high <- coffee_ratings2[which.max(coffee_ratings2$flavor), ]
+cafe_flavor_low  <- coffee_ratings2[which.min(coffee_ratings2$flavor), ]
+
+cafe_acid_high   <- coffee_ratings2[which.max(coffee_ratings2$acidity), ]
+cafe_acid_low    <- coffee_ratings2[which.min(coffee_ratings2$acidity), ]
+
+# Unir los 6 cafés
+muestras <- rbind(
+  cafe_aroma_high,
+  cafe_aroma_low,
+  cafe_flavor_high,
+  cafe_flavor_low,
+  cafe_acid_high,
+  cafe_acid_low
+)
+
+rownames(muestras) <- c(
+  "HighAroma", "LowAroma",
+  "HighFlavor", "LowFlavor",
+  "HighAcidity", "LowAcidity"
+)
+
+# Calcular fila max y min para la escala
 fila_max <- apply(coffee_ratings2, 2, max)
 fila_min <- apply(coffee_ratings2, 2, min)
 
-# Crear el data frame final para el radar chart
+# Data frame final para el radar chart
 coffee_ratings_spider <- rbind(fila_max, fila_min, muestras)
 
-# Definir colores con buena visibilidad
-coul <- brewer.pal(3, "Set2")
+# Colores (6 cafés)
+coul <- brewer.pal(6, "Set2")
 colors_border <- coul
-colors_in <- alpha(coul, 0.4)
+colors_in <- alpha(coul, 0.35)
 
-# Crear el radar chart
+# Radar chart
 radarchart(
   coffee_ratings_spider,
   axistype = 1,
@@ -223,22 +244,17 @@ radarchart(
   vlcex = 1
 )
 
-# Añadir leyenda clara y bien posicionada
+# Leyenda
 legend(
   x = "topright",
-  legend = rownames(coffee_ratings_spider[-c(1, 2), ]),
+  legend = rownames(coffee_ratings_spider[-c(1,2), ]),
   bty = "n",
   pch = 20,
   col = colors_in,
   text.col = "black",
-  cex = 1.2,
+  cex = 1,
   pt.cex = 2
 )
-
-
-
-
-
 #SEGUNDA GRAFICA:radar chart, spider chart.
 #Tiene que ser con datos numéricos, en nuestro caso, puede ser con:
 #aroma, flavor, acidity.
@@ -280,6 +296,50 @@ radarchart(coffee_ratings_spider, axistype=0, maxmin=TRUE,
 legend(x=0.7, y=1, legend=rownames(coffee_ratings_spider[-c(1,2),]),
        bty="n", pch=20, col=colors_in, text.col="grey",
        cex=1.2, pt.cex=3)
+###################################################
+#Opción 2 para la 2 grafica:
+library(MASS)
+
+# Seleccionar atributos sensoriales
+coffee_ratings2 <- coffee_ratings[, c("aroma", "flavor", "acidity")]
+
+# Elegir 20 cafés aleatorios para que sea legible
+set.seed(123)
+muestras <- coffee_ratings2[sample(1:nrow(coffee_ratings2), 20), ]
+
+# Normalizar entre 0 y 1 (muy importante)
+muestras_norm <- as.data.frame(
+  apply(muestras, 2, function(x) (x - min(x)) / (max(x) - min(x)))
+)
+
+# Crear colores bonitos
+colores <- rainbow(nrow(muestras_norm), alpha = 0.6)
+
+# Parallel coordinates plot con MASS
+parcoord(
+  muestras_norm,
+  col = colores,
+  lwd = 2,
+  var.label = TRUE,
+  main = "Parallel Coordinates Plot (MASS::parcoord)"
+)
+
+# Añadir leyenda
+legend(
+  "topright",
+  legend = paste0("Cafe", 1:nrow(muestras_norm)),
+  col = colores,
+  lwd = 2,
+  bty = "n"
+)
+
+
+
+
+
+
+
+
 
 
 #Tercera grafica: variety con la altitud? 
