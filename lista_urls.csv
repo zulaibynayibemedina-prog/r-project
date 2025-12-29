@@ -1,0 +1,11 @@
+Country;URL;String
+Argentina;https://www.afa.com.ar/es/pages/campeones-de-primera-division;'Argentina' = 'https://www.afa.com.ar/es/pages/campeones-de-primera-division',
+Bolivia;https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Bolivia;'Bolivia' = 'https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Bolivia',
+Brasil;https://es.wikipedia.org/wiki/Campeonato_Brasile%C3%B1o_de_Serie_A;'Brasil' = 'https://es.wikipedia.org/wiki/Campeonato_Brasile%C3%B1o_de_Serie_A',
+Chile;https://es.wikipedia.org/wiki/Historial_de_la_Primera_Divisi%C3%B3n_de_Chile;'Chile' = 'https://es.wikipedia.org/wiki/Historial_de_la_Primera_Divisi%C3%B3n_de_Chile',
+Colombia;https://es.wikipedia.org/wiki/Categor%C3%ADa_Primera_A;'Colombia' = 'https://es.wikipedia.org/wiki/Categor%C3%ADa_Primera_A',
+Ecuador;https://es.wikipedia.org/wiki/Serie_A_(Ecuador);'Ecuador' = 'https://es.wikipedia.org/wiki/Serie_A_(Ecuador)',
+Paraguay;https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Paraguay;'Paraguay' = 'https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Paraguay',
+Perú;https://es.wikipedia.org/wiki/Anexo:Campeones_de_la_Primera_Divisi%C3%B3n_del_Per%C3%BA;'Perú' = 'https://es.wikipedia.org/wiki/Anexo:Campeones_de_la_Primera_Divisi%C3%B3n_del_Per%C3%BA',
+Uruguay;https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Uruguay;'Uruguay' = 'https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Uruguay',
+Venezuela;https://es.wikipedia.org/wiki/Anexo:Historial_de_la_Primera_Divisi%C3%B3n_de_Venezuela;'Venezuela' = 'https://es.wikipedia.org/wiki/Anexo:Historial_de_la_Primera_Divisi%C3%B3n_de_Venezuela',
