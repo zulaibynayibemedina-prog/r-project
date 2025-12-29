@@ -3,11 +3,89 @@
 tuesdata <- tidytuesdayR::tt_load('2020-07-07')
 coffee_ratings <- tuesdata$coffee_ratings
 
-#Cosas que me parece interesante comparar:
-#El aroma con otros atributos como flavor, aftertaste, acidity
-#Hay una variable balance, podemos tambien 
-#compararla con atributos. ¿Qué explica el balance?
-#Altitud vs calidad (atributos) ¿Como influye la altitud?
+#Este código a continuación es la versión mejorada POR COPILOT del código
+#Que yo hice antes que está debajo (despues de este)
+#Cositas por ver: Yo no veo que los centroides cambien de tamaño taantp
+#Intente poner con labels en cada centroide pero se veia horroroso
+#Y ya pude recortar el mapa para que no sea continuo jej.
+library(dplyr)
+library(leaflet) #This library is used to create the base map
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+library(scales)
+
+
+#Como el mapa usa nombre estandard e intenté usar una funcion,
+#Habian errores entonces segun copilot hay que hacerlo manual.
+
+#This first and previous step, consists on standarizing the country names
+#because they must match the names from rnaturalearth
+coffee_ratings$country_clean <- coffee_ratings$country_of_origin
+
+coffee_ratings$country_clean[coffee_ratings$country_clean == "United States (Puerto Rico)"] <- "Puerto Rico"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "Tanzania, United Republic Of"] <- "Tanzania"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "Cote d?Ivoire"] <- "Ivory Coast"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "Hawai'i"] <- "United States of America"
+
+#Centroids of the countries to place the bubbles:
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+#Extract centroids
+centroids <- st_centroid(world$geometry)
+coords <- st_coordinates(centroids)
+#Maintain only name and coords
+world_centroids <- data.frame(
+  country_clean = world$admin,
+  long = coords[, "X"],
+  lat = coords[, "Y"]
+)
+
+#Join the data set with coordinates for each country:
+data_map <- merge(
+  coffee_ratings,
+  world_centroids,
+  by = "country_clean",
+  all.x = TRUE
+)
+
+#Create the bubble map (interactive)
+
+mapa <- leaflet(options = leafletOptions(worldCopyJump = FALSE))
+
+mapa <- addProviderTiles(
+  mapa,
+  "Esri.WorldImagery",
+  options = providerTileOptions(noWrap = TRUE)
+)
+
+mapa <- setView(mapa, lng = 0, lat = 20, zoom = 2) #Global view
+
+mapa <- addCircleMarkers(
+  mapa,
+  lng = data_map$long,
+  lat = data_map$lat,
+  radius = scales::rescale(data_map$total_cup_points, to = c(5, 40)),
+  color = "violet",
+  fillOpacity = 0.6,
+  #When the user clicks on the bubble, the following information is shown:
+  popup = paste0(
+    "Country: ", data_map$country_of_origin, "<br>",
+    "Total cup points: ", data_map$total_cup_points
+  )
+)
+
+
+mapa <- addLegend(
+  mapa,
+  position = "bottomright",
+  colors = "violet",
+  labels = "Bubble size = Coffee cup score",
+  opacity = 0.6,
+  title = "Interpretation"
+)
+
+mapa
 
 
 #UN BUBLE MAP: ponemos los paises y las bubles son las calificaciones:
@@ -19,11 +97,11 @@ sum(is.na(coffee_ratings$cupper_points)) #0
 sum(is.na(coffee_ratings$country_of_origin)) #me da 1
 which(is.na(coffee_ratings$country_of_origin))
 coffee_ratings[1198,]
-#HICE ESTO SOLITAAAAA, SIN AYUDAS, solo a memoria.
+
 #Link del bubble map: https://r-graph-gallery.com/bubble-map
-install.packages("leaflet.js")
-install.packages("plotly") #Con este paquete se hace interactivo
-install.packages("leaflet")
+#install.packages("leaflet.js")
+#install.packages("plotly") #Con este paquete se hace interactivo
+#install.packages("leaflet")
 
 #Primero tengo que hacer un mapa base
 # Load the library
@@ -43,9 +121,9 @@ p <- leaflet() %>%
   addProviderTiles("Esri.WorldImagery")
 p
 
-install.packages("rnaturalearth")
-install.packages("rnaturalearthdata")
-install.packages("sf")
+# install.packages("rnaturalearth")
+# install.packages("rnaturalearthdata")
+# install.packages("sf")
 
 library(dplyr)
 library(leaflet)
@@ -93,7 +171,7 @@ leaflet(data_map) %>%
 #Cosas por verificar: country_of_origin debe coincidir con los nombres estándar de países de rnaturalearth
 #Falta añadir leyenda para el mapa.
 #Existe una libreria
-install.packages("countrycode")
+#install.packages("countrycode")
 library(countrycode)
 coffee_ratings$country_clean <- countrycode(
   sourcevar = coffee_ratings$country_of_origin,
@@ -101,15 +179,69 @@ coffee_ratings$country_clean <- countrycode(
   destination = "country.name",
   warn = TRUE
 )
-#Aqui ya no se porque me dice:
-#Avisos:
-#1: Some values were not matched unambiguously: United States (Puerto Rico)
-#2: Some strings were matched more than once, and therefore set to <NA> in the result: United States (Puerto Rico),Puerto Rico,United States
+###############################################
+# Cargar paquetes necesarios
+library(fmsb)
+library(RColorBrewer)
+library(scales)
+
+# Asegurar que el dataset esté en formato data.frame
+coffee_ratings <- as.data.frame(coffee_ratings)
+
+# Seleccionar las columnas numéricas relevantes
+coffee_ratings2 <- coffee_ratings[, c("aroma", "flavor", "acidity")]
+
+# Elegir tres cafés con perfiles distintos
+muestras <- coffee_ratings2[c(10, 200, 500), ]
+rownames(muestras) <- c("Cafe1", "Cafe2", "Cafe3")
+
+# Calcular fila de máximos y mínimos para definir la escala del gráfico
+fila_max <- apply(coffee_ratings2, 2, max)
+fila_min <- apply(coffee_ratings2, 2, min)
+
+# Crear el data frame final para el radar chart
+coffee_ratings_spider <- rbind(fila_max, fila_min, muestras)
+
+# Definir colores con buena visibilidad
+coul <- brewer.pal(3, "Set2")
+colors_border <- coul
+colors_in <- alpha(coul, 0.4)
+
+# Crear el radar chart
+radarchart(
+  coffee_ratings_spider,
+  axistype = 1,
+  maxmin = TRUE,
+  pcol = colors_border,
+  pfcol = colors_in,
+  plwd = 3,
+  plty = 1,
+  cglcol = "grey",
+  cglty = 1,
+  axislabcol = "black",
+  cglwd = 0.8,
+  vlcex = 1
+)
+
+# Añadir leyenda clara y bien posicionada
+legend(
+  x = "topright",
+  legend = rownames(coffee_ratings_spider[-c(1, 2), ]),
+  bty = "n",
+  pch = 20,
+  col = colors_in,
+  text.col = "black",
+  cex = 1.2,
+  pt.cex = 2
+)
+
+
+
 
 
 #SEGUNDA GRAFICA:radar chart, spider chart.
 #Tiene que ser con datos numéricos, en nuestro caso, puede ser con:
-#aroma, flavor, acidity, lo que no entiendo es qué va en el centro
+#aroma, flavor, acidity.
 #Recomiendan máximo 3 variables
 #Para el chart necesito minimos y maximos en el df
 class(coffee_ratings)
@@ -157,11 +289,11 @@ legend(x=0.7, y=1, legend=rownames(coffee_ratings_spider[-c(1,2),]),
 #Debemos primero limpiar los datos para dejarlos sin NAs
 
 
-install.packages("ggridges")
-install.packages("ggplot2")
-install.packages("MetBrewer")
-install.packages("glue")
-install.packages("dplyr")
+# install.packages("ggridges")
+# install.packages("ggplot2")
+# install.packages("MetBrewer")
+# install.packages("glue")
+# install.packages("dplyr")
 library(ggridges)
 library(dplyr)
 library(ggplot2)
