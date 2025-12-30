@@ -472,6 +472,8 @@ ggplot(coffee_plot3, aes(
 )) +
   geom_density_ridges(alpha = 0.8) +
   scale_x_continuous(limits = c(0, 3000)) + 
+  scale_fill_manual(values=met.brewer("Java",length(unique(coffee_plot3$variety))))
+  #Si no quieres java, hay "Hiroshige", "Cassatt2"
   theme_minimal() +
   guides(fill = "none") +
   labs(
