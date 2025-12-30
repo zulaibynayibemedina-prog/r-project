@@ -10,6 +10,7 @@ coffee_ratings <- tuesdata$coffee_ratings
 #Y ya pude recortar el mapa para que no sea continuo jej.
 library(dplyr)
 library(leaflet) #This library is used to create the base map
+library(leaflegend)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(sf)
@@ -24,9 +25,10 @@ library(scales)
 coffee_ratings$country_clean <- coffee_ratings$country_of_origin
 
 coffee_ratings$country_clean[coffee_ratings$country_clean == "United States (Puerto Rico)"] <- "Puerto Rico"
-coffee_ratings$country_clean[coffee_ratings$country_clean == "Tanzania, United Republic Of"] <- "Tanzania"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "Tanzania, United Republic Of"] <- "United Republic of Tanzania"
 coffee_ratings$country_clean[coffee_ratings$country_clean == "Cote d?Ivoire"] <- "Ivory Coast"
 coffee_ratings$country_clean[coffee_ratings$country_clean == "Hawai'i"] <- "United States of America"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "United States"] <- "United States of America"
 
 #Centroids of the countries to place the bubbles:
 
@@ -41,9 +43,17 @@ world_centroids <- data.frame(
   lat = coords[, "Y"]
 )
 
+coffee_sum <- coffee_ratings |> 
+  group_by(country_clean) |> 
+  summarise(mean_points = mean(total_cup_points, na.rm = T),
+            sd_points = sd(total_cup_points, na.rm = T),
+            n_prod = n(),
+            max_point = max(total_cup_points, na.rm = T),
+            min_point = min(total_cup_points, na.rm = T))
+
 #Join the data set with coordinates for each country:
 data_map <- merge(
-  coffee_ratings,
+  coffee_sum,
   world_centroids,
   by = "country_clean",
   all.x = TRUE
@@ -51,11 +61,21 @@ data_map <- merge(
 
 #Create the bubble map (interactive)
 
-mapa <- leaflet(options = leafletOptions(worldCopyJump = FALSE))
+normalizar_radio <- function(valor, min_radio = 5, max_radio = 20) {
+  min_val <- min(valor, na.rm = TRUE)
+  max_val <- max(valor, na.rm = TRUE)
+  escala <- (valor - min_val) / (max_val - min_val)
+  return(min_radio + escala * (max_radio - min_radio))
+}
+
+
+mapa <- leaflet(options = leafletOptions(worldCopyJump = FALSE,
+                                         minZoom = 2,
+                                         maxZoom = 8))
 
 mapa <- addProviderTiles(
   mapa,
-  "Esri.WorldImagery",
+  "Stadia.StamenTonerLite",
   options = providerTileOptions(noWrap = TRUE)
 )
 
@@ -65,21 +85,27 @@ mapa <- addCircleMarkers(
   mapa,
   lng = data_map$long,
   lat = data_map$lat,
-  radius = scales::rescale(data_map$total_cup_points, to = c(5, 40)),
-  color = "violet",
+  radius = normalizar_radio(data_map$mean_points, min_radio = 3, max_radio = 25),
+  color = "#B36936",
   fillOpacity = 0.6,
   #When the user clicks on the bubble, the following information is shown:
   popup = paste0(
-    "Country: ", data_map$country_of_origin, "<br>",
-    "Total cup points: ", data_map$total_cup_points
+    "Country: ", data_map$country_clean, "<br>",
+    "Mean cup points: ", round(data_map$mean_points,2), "<br>",
+    "Standard Deviation: ", round(data_map$sd_points,2), "<br>",
+    "Minimum cup point: ", round(data_map$min_point,2), "<br>",
+    "Maximum cup point: ", round(data_map$max_point,2), "<br>",
+    "Number of products: ", data_map$n_prod
   )
 )
+
+
 
 
 mapa <- addLegend(
   mapa,
   position = "bottomright",
-  colors = "violet",
+  colors = "#B36936",
   labels = "Bubble size = Coffee cup score",
   opacity = 0.6,
   title = "Interpretation"
@@ -296,6 +322,45 @@ radarchart(coffee_ratings_spider, axistype=0, maxmin=TRUE,
 legend(x=0.7, y=1, legend=rownames(coffee_ratings_spider[-c(1,2),]),
        bty="n", pch=20, col=colors_in, text.col="grey",
        cex=1.2, pt.cex=3)
+
+
+
+# Versión benja -----------------------------------------------------------
+
+library(tidyverse)
+library(fmsb)
+
+set.seed(1234)
+df_spyder <- coffee_ratings |> 
+  drop_na(aroma:sweetness) |> 
+  slice_sample(n = 3) |> 
+  mutate(label = paste0(species, " - ", country_of_origin))
+
+
+filas <- c("max", "min", df_spyder$label)
+
+
+df_spyder <- df_spyder |> 
+  dplyr::select(aroma:sweetness) 
+
+df_spyder <- rbind(rep(10,9) , rep(0,9) , df_spyder) |> as.data.frame()
+
+
+rownames(df_spyder) <- filas
+
+colors_border=c( rgb(0.2,0.5,0.5,0.9), rgb(0.8,0.2,0.5,0.9) , rgb(0.7,0.5,0.1,0.9) )
+colors_in=c( rgb(0.2,0.5,0.5,0.1), rgb(0.8,0.2,0.5,0.1) , rgb(0.7,0.5,0.1,0.1) )
+
+radarchart(df_spyder, axistype = 1,
+           pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
+           #custom the grid
+           cglcol="grey", cglty=1, axislabcol="grey", caxislabels=seq(0,10,2), cglwd=0.8,
+           #custom labels
+           vlcex=0.8 )
+
+legend(x=0.9, y=1, legend = rownames(df_spyder[-c(1,2),]), bty = "n", pch=20 , col=colors_border , text.col = "grey30", cex=1.1, pt.cex=3)
+
+
 ###################################################
 #Opción 2 para la 2 grafica:
 library(MASS)
@@ -464,7 +529,7 @@ ordenadas <- names(sort(mean_altitudes))
 # Convierto en factor:
 coffee_plot3$variety <- factor(coffee_plot3$variety, levels = ordenadas)
 
-windows(width = 10, height = 7)
+# windows(width = 10, height = 7)
 ggplot(coffee_plot3, aes(
   x = altitude_mean_meters,
   y = variety,
@@ -472,7 +537,7 @@ ggplot(coffee_plot3, aes(
 )) +
   geom_density_ridges(alpha = 0.8) +
   scale_x_continuous(limits = c(0, 3000)) + 
-  scale_fill_manual(values=met.brewer("Java",length(unique(coffee_plot3$variety))))
+  scale_fill_manual(values=met.brewer("Java",length(unique(coffee_plot3$variety))))+
   #Si no quieres java, hay "Hiroshige", "Cassatt2"
   theme_minimal() +
   guides(fill = "none") +

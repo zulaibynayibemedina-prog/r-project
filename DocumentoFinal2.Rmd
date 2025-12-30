@@ -1,0 +1,591 @@
+---
+title: "Practical Work R Studio"
+author: Benjamin Adasme and Zulaiby Medina
+output: html_document
+date: "2025-12-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1:
+
+```{r}
+
+# Champions function ------------------------------------------------------
+
+library(dplyr)
+library(stringr)
+
+
+champions <- function(country, years) {
+  #We start by creating a list with the countries and the respective links:   
+  urls <- list(
+    'Argentina' = 'https://www.afa.com.ar/es/pages/campeones-de-primera-division',
+    'Bolivia' = 'https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Bolivia',
+    'Brasil' = 'https://es.wikipedia.org/wiki/Campeonato_Brasile%C3%B1o_de_Serie_A',
+    'Chile' = 'https://es.wikipedia.org/wiki/Historial_de_la_Primera_Divisi%C3%B3n_de_Chile',
+    'Colombia' = 'https://es.wikipedia.org/wiki/Categor%C3%ADa_Primera_A',
+    'Ecuador' = 'https://es.wikipedia.org/wiki/Serie_A_(Ecuador)',
+    'Paraguay' = 'https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Paraguay',
+    'Perú' = 'https://es.wikipedia.org/wiki/Anexo:Campeones_de_la_Primera_Divisi%C3%B3n_del_Per%C3%BA',
+    'Uruguay' = 'https://es.wikipedia.org/wiki/Primera_Divisi%C3%B3n_de_Uruguay',
+    'Venezuela' = 'https://es.wikipedia.org/wiki/Anexo:Historial_de_la_Primera_Divisi%C3%B3n_de_Venezuela'
+  )
+  #Verify the country is on the list:
+  if (!(country %in% names(urls))) {
+    stop("El país elegido no está disponible.")
+  }
+  # We start web scrapping with rvest.
+  # We extract the main table, where champions appear.
+  # html_table() converts the HTML table in data frame.
+  raw1 <- rvest::html_table(
+    rvest::read_html(urls[[country]]))
+  
+  #We must take into account that the tables could have different column names,
+  #Thus, we rename the "Year" and "Champion" columns:
+  
+  if (country == 'Argentina') {
+    tab_cham <- raw1[[2]] |> 
+      mutate(Temporada = str_remove_all(Temporada, "\\([^)]+\\)"),
+             Temporada = str_replace_all(Temporada, "\\/\\d\\d\\d\\d", ""),
+             Temporada = str_replace_all(Temporada, "\\/\\d\\d", ""),
+             Temporada = str_squish(Temporada),
+             Temporada = as.numeric(str_sub(Temporada, start = -4)),
+             Campeón = str_squish(Campeón),
+             Campeón_2 = case_when(Campeón == "Estudiantes" ~ "Estudiantes de La Plata",
+                                   Campeón == "Newells Old Boys" ~ "Newell´s Old Boys",
+                                   Campeón == "Vélez Sársfield" ~ "Vélez Sarsfield",
+                                   T ~ Campeón)) |> 
+      select("Year" = Temporada, "Champion" = Campeón_2)
+  }
+  if (country == 'Bolivia') {
+    tab_cham <- raw1[[6]] |> 
+      filter(str_starts(Temp., "\\d")) |> 
+      mutate(Torneo = str_remove_all(Torneo, "\\[\\d\\]|\\[\\d\\d\\]|\\[\\d[:alpha:]\\]"),
+             Torneo = str_remove_all(Torneo, "\\-[:alpha:]"),
+             Torneo = str_remove_all(Torneo, "[:alpha:]$"),
+             Torneo = as.numeric(Torneo),
+             Campeón = str_remove_all(Campeón, "\\(\\d\\d\\)|\\(\\d\\)"),
+             Campeón = str_squish(Campeón)) |> 
+      select("Year" = Torneo, "Champion" = Campeón)
+  }
+  
+  if (country == "Brasil") {
+    tab_cham <- raw1[[5]] |> 
+      select(-8) |> 
+      filter(str_starts(Temporada, "\\d")) |> 
+      mutate(Temporada = as.numeric(Temporada),
+             Campeón = str_remove_all(Campeón, "\\(\\d\\d\\)|\\(\\d\\)"),
+             Campeón = str_squish(Campeón)) |> 
+      select("Year" = Temporada, "Champion" = Campeón)
+  }
+  
+  if (country == "Chile") {
+    tab_cham <- raw1[[1]] |> 
+      filter(str_starts(Año, pattern = "\\d")) |> 
+      mutate(Año = str_remove(Año, "\\([:alnum:]\\)"),
+             Año = str_remove(Año, "\\([:alnum:][:alnum:]\\)"),
+             Año = as.numeric(str_squish(Año)),
+             `Campeón[1]​` = str_remove(`Campeón[1]​`, "\\([:alnum:]\\)"),
+             `Campeón[1]​` = str_squish(str_remove(`Campeón[1]​`, "\\([:alnum:][:alnum:]\\)"))) |> 
+      select("Year" = Año, "Champion" = `Campeón[1]​`)
+  }
+  
+  if (country == "Colombia"){
+    
+    tab_cham <- raw1[[3]] |> 
+      select(-10) |> 
+      rename("Campeón" = 3) |> 
+      filter(str_starts(Año, "\\d")) |> 
+      mutate(Año = as.numeric(str_sub(Año, start = 1, end = 4)),
+             Campeón = str_extract(Campeón, "^[^(]+")) |> 
+      select("Year" = Año, "Champion" = Campeón)
+  }
+  
+  if (country == "Ecuador"){
+    tab_cham <- raw1[[5]] |> 
+      mutate(Temporada = as.numeric(str_remove(Temporada, "-[:alpha:]")),
+             Campeón = str_remove_all(Campeón, "\\(\\d\\d\\)|\\(\\d\\)"),
+             Campeón = str_squish(Campeón),
+             Campeón = if_else(Temporada %in% c(1958,1959), NA, Campeón)) |> 
+      select("Year" = Temporada, "Champion" = Campeón)
+  }
+  
+  if (country == "Paraguay"){
+    tab_cham <- raw1[[5]] |> 
+      select(-Edición) |> 
+      filter(str_starts(Temp., "\\d")) |> 
+      mutate(Año = as.numeric(Año),
+             Campeón = str_extract(Campeón, "^[^(]+"),
+             Campeón = str_squish(Campeón)) |> 
+      select("Year" = Año, "Champion" = Campeón)
+  }
+  
+  if (country == "Perú"){
+    tab_cham <- raw1[[1]] |> 
+      filter(str_starts(Temporada, "\\d")) |> 
+      mutate(Temporada = str_squish(Temporada),
+             Temporada = str_sub(Temporada,1,4),
+             Temporada = as.numeric(Temporada)) |> 
+      select("Year" = Temporada, "Champion" = Campeón)
+  }
+  
+  if (country == "Uruguay"){
+    tab_cham <- raw1[[3]] |> 
+      select(-7) |> 
+      filter(str_starts(N.º, "\\d")) |> 
+      mutate(Temp. = str_sub(Temp., 1,4),
+             Campeón = str_squish(str_extract(Campeón, "^[^(]+"))) |> 
+      select("Year" = Temp., "Champion" = Campeón)
+  }
+  
+  if (country == "Venezuela"){
+    tab_ven <- suppressMessages(full_join(raw1[[2]], raw1[[4]]) |> 
+      full_join(raw1[[5]]))
+    
+    tab_cham <- tab_ven |> 
+      mutate(Campeón = case_when(!is.na(`Campeón[1]​`) ~ `Campeón[1]​`,
+                                 !is.na(`Campeón[2]​`) ~ `Campeón[2]​`,
+                                 !is.na(`Campeón[3]​`) ~ `Campeón[3]​`)) |> 
+      filter(str_starts(Año, "\\d")) |> 
+      mutate(Año = as.numeric(str_sub(Año, 1,4)),
+             Campeón = str_remove_all(Campeón, "\\(\\d\\d\\)|\\(\\d\\)"),
+             Campeón = str_squish(Campeón)) |> 
+      select("Year" = Año, "Champion" = Campeón)
+  }
+  
+  
+  #Deppending on the years chosen by the user, the table will only include that period of time
+  tabla_filtrada <- subset(tab_cham, Year %in% years)
+  
+  #Frequency table and percentage:
+  freq <- as.data.frame(table(tabla_filtrada$Champion))
+  freq <- dplyr::arrange(freq, dplyr::desc(Freq))
+  freq$Percent <- round(freq$Freq / sum(freq$Freq) * 100, 2)
+
+  teams <- format(freq$Var1, width = 20, justify = "left")
+  freqs <- format(freq$Freq, width = 5, justify = "right")
+  percs <- format(sprintf("%.2f", freq$Percent), width = 7, justify = "right")
+  
+  cat("Champions (male football) in", country,  "in the", length(years), "selected years\n")
+  
+  cat(format("", width = 20), " ", 
+      format("Freq", width = 5, justify = "right"), " ", 
+      format("%", width = 7, justify = "right"), "\n")
+  cat(paste(rep("-", 40), collapse = ""), "\n")
+  
+  for (i in 1:nrow(freq)) {
+    cat(teams[i], " ", freqs[i], " ", percs[i], "\n")
+  }
+}
+
+```
+
+**Examples of the function**
+
+```{r}
+champions("Colombia", 1996:2025)
+```
+```{r}
+champions("Chile", 1988:2020)
+```
+In the following example we could see what happens if the country does not exist on our list:
+```{r, error=TRUE}
+champions("Alemania", 1990:2000)
+```
+On the other hand, if the years are not supported:
+```{r, error=TRUE}
+champions("Uruguay", 1420:1500)
+```
+The typing is also very important, as the function identifies between lower cases and upper cases:
+```{r, error=TRUE}
+champions("colombia", 1900:2000)
+```
+
+
+
+### Brief Description of the code:
+
+We have built a function called Champions with 5 main parts:
+1) The function begins by creating a named list that associates each supported country with the URL containing its historical champions. There is an input for the user and the function checks whether the country provided exists in this list. If not, it stops execution and returns an informative error message.
+2) Once the country is validated, the function retrieves the corresponding web page and extracts the main table containing the champions.
+3) The function estandardizes the columns of the tables from the webpages, this is one of the most important parts of the function, as otherwise web scraping will not work because the data will not be found.
+4) The table is filtered and only the rows that correspond to the years that the user wants to see, are kept.
+5)Finally, the function computes how many times each team appears in the filtered data and the percentage that each team represents out of the total.
+
+
+### Additional explanations: 
+
+For this part of the project we have chosen football as our sport of interest. It is one of the disciplines with the most complete and accessible historical records. In addition to this, Wikipedia has a wide documentation of the champions of major european leagues, even from their earliest seasons. We compared it with other websites and working with Wikipedia allowed us to build a more flexible function capable of handling a wider range of years. 
+
+We selected the following Countries:
+
+- Argentina^[For Argentina male football league we extracted the data from Argentina Football Association, which is the source for Wikipedia tables]
+- Bolivia
+- Brasil
+- Chile
+- Colombia
+- Ecuador
+- Paraguay
+- Peru
+- Uruguay
+- Venezuela
+
+Each of these leagues has a Wikipedia page with its corresponding table of champions by season and we have made the web scrapping using the rvest package in R. 
+
+### Difficulties
+While doing web scrapping we noticed that each league´s Wikipedia page uses different column names and formats, so it was necessary to standardize column names inside the function. Also, it was necessary to use advanced tools to deal with messy text, provided by the stringr package. 
+
+On the other hand, to write the function, first we had to build it in a logic way, which implied talking about what we were going to filter first and how to organize the different parts of the function. 
+As it must accept multiple countries, we had to be sure that it was downloading the corresponding table from Wikipedia standardizing the different formats that could exist. Also, filtering data according to year was a challenge as sometimes years are not fully written in the web page. 
+
+### Possible Extensions
+
+- We could include more sports but same countries.
+- It could be better for the user if he could visualize data not only on the table but on a plot, for example, building a bar plot of the most frequent champions, or a time series plot of league winners. 
+- The function could allow the users to request champions from different countries at once, withouth having to run the function for each of them.
+- As we learned in class, the function could include at the end, the possibility of saving the table as an excel or a CSV document.
+- The function could read the user´s input and try to find if there is a typo, for example a letter or if instead of an Upper case, the user wrote a lower case and return a message saying "Did you want to write ___?". 
+
+## Exercise 2:
+
+For this part of the project we have made some research on TidyTuesday, a community organized by the Data Science Learning Community that uploads a new data set every week and the programmers can practice exploring, visualizing, doing plots, and other things related to data analysis. 
+After reviewing some interesting data sets, like horror movies, christmas songs, billboard songs; we have chosen to work with Coffee ratings, data set. Which could be obtained from:
+
+```{r}
+# Get the Data
+
+# Read in with tidytuesdayR package 
+# Install from CRAN via: install.packages("tidytuesdayR")
+# This loads the readme and all the datasets for the week of interest
+
+# Either ISO-8601 date or year/week works
+
+tuesdata <- tidytuesdayR::tt_load('2020-07-07')
+tuesdata <- tidytuesdayR::tt_load(2020, week = 28)
+
+coffee_ratings <- tuesdata$coffee_ratings
+
+# Or read in the data manually
+
+coffee_ratings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2020/2020-07-07/coffee_ratings.csv')
+
+```
+This source was directly provided from TidyTuesday.
+
+
+**Table**: description of dataset variables.
+
+|variable              |class     |description |
+|:---------------------|:---------|:-----------|
+|total_cup_points      |double    | Total rating/points (0 - 100 scale) |
+|species               |character | Species of coffee bean (arabica or robusta) |
+|owner                 |character | Owner of the farm |
+|country_of_origin     |character | Where the bean came from |
+|farm_name             |character | Name of the farm |
+|lot_number            |character | Lot number of the beans tested |
+|mill                  |character | Mill where the beans were processed |
+|ico_number            |character | International Coffee Organization number |
+|company               |character | Company name |
+|altitude              |character | Altitude - this is a messy column - I've left it for some cleaning  |
+|region                |character | Region where bean came from |
+|producer              |character | Producer of the roasted bean |
+|number_of_bags        |double    | Number of bags tested |
+|bag_weight            |character | Bag weight tested |
+|in_country_partner    |character | Partner for the country |
+|harvest_year          |character | When the beans were harvested (year) |
+|grading_date          |character | When the beans were graded|
+|owner_1               |character | Who owns the beans|
+|variety               |character | Variety of the beans |
+|processing_method     |character | Method for processing|
+|aroma                 |double    | Aroma grade |
+|flavor                |double    | Flavor grade |
+|aftertaste            |double    | Aftertaste grade |
+|acidity               |double    | Acidity grade |
+|body                  |double    | Body grade |
+|balance               |double    | Balance grade |
+|uniformity            |double    | Uniformity grade |
+|clean_cup             |double    | Clean cup grade |
+|sweetness             |double    | Sweetness grade |
+|cupper_points         |double    | Cupper Points|
+|moisture              |double    | Moisture Grade|
+|category_one_defects  |double    | Category one defects (count) |
+|quakers               |double    | quakers|
+|color                 |character | Color of bean |
+|category_two_defects  |double    |Category two defects (count)  |
+|expiration            |character | Expiration date of the beans |
+|certification_body    |character | Who certified it |
+|certification_address |character | Certification body address |
+|certification_contact |character | Certification contact |
+|unit_of_measurement   |character | Unit of measurement |
+|altitude_low_meters   |double    | Altitude low meters|
+|altitude_high_meters  |double    | Altitude high meters |
+|altitude_mean_meters  |double    | Altitude mean meters |
+*Source: [Github TidyTuesday Repository](https://github.com/rfordatascience/tidytuesday/blob/main/data/2020/2020-07-07/readme.md)*
+
+
+On of the reasons of our choice is that we both like coffee and coming from a Latin American country (known for its coffee) makes it very interesting to understand how people measure the quality of coffee and how it is widely extended around the world, resulting on a variety of manners of drinking and preparing it. As it will be seen below, our graphics measure mostly the characteristics that describe the standardized "quality" of the coffee, this could also be seen on the column "total cup points" which is what we mostly wanted to understand, analyzing what is related to it. 
+
+### Plot 1
+
+Interactive bubble map created with leaflet. Its purpose is to display the global distribution of coffee quality scores (total_cup_points) by country of origin. This gives the user an idea on how coffee quality scores are distributed geographically, using bubble size to represent the magnitude of the score. For every country, we summarize the mean score for their production and other stats, and use them to plot the map. 
+
+```{r, out.width='100%'}
+library(leaflet)
+library(rnaturalearth)
+library(sf)
+
+# We recode some country names to match them with the ones used in the base map.
+coffee_ratings$country_clean <- coffee_ratings$country_of_origin
+
+coffee_ratings$country_clean[coffee_ratings$country_clean == "United States (Puerto Rico)"] <- "Puerto Rico"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "Tanzania, United Republic Of"] <- "United Republic of Tanzania"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "Cote d?Ivoire"] <- "Ivory Coast"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "Hawai'i"] <- "United States of America"
+coffee_ratings$country_clean[coffee_ratings$country_clean == "United States"] <- "United States of America"
+
+# The rnaturalearth package provides a world map
+world <- ne_countries(scale = "medium", returnclass = "sf")
+# Extract centroids
+centroids <- st_centroid(world$geometry)
+coords <- st_coordinates(centroids)
+# Maintain only name and coords
+world_centroids <- data.frame(
+  country_clean = world$admin,
+  long = coords[, "X"],
+  lat = coords[, "Y"]
+)
+
+# Summary of scores by country
+coffee_sum <- coffee_ratings |> 
+  group_by(country_clean) |> 
+  summarise(mean_points = mean(total_cup_points, na.rm = T),
+            sd_points = sd(total_cup_points, na.rm = T),
+            n_prod = n(),
+            max_point = max(total_cup_points, na.rm = T),
+            min_point = min(total_cup_points, na.rm = T))
+
+#Join the data set with coordinates for each country:
+data_map <- merge(
+  coffee_sum,
+  world_centroids,
+  by = "country_clean",
+  all.x = TRUE
+)
+
+
+#Create the bubble map (interactive)
+mapa <- leaflet(options = leafletOptions(worldCopyJump = FALSE,
+                                         minZoom = 2,
+                                         maxZoom = 7))
+
+mapa <- addProviderTiles(
+  mapa,
+  "Stadia.StamenTonerLite",
+  options = providerTileOptions(noWrap = TRUE)
+)
+
+mapa <- setView(mapa, lng = 0, lat = 20, zoom = 2) #Global view
+
+# We created the next function to standardize the scores to a radio scale
+normalizar_radio <- function(valor, min_radio = 5, max_radio = 20) {
+  min_val <- min(valor, na.rm = TRUE)
+  max_val <- max(valor, na.rm = TRUE)
+  escala <- (valor - min_val) / (max_val - min_val)
+  return(min_radio + escala * (max_radio - min_radio))
+}
+
+mapa <- addCircleMarkers(
+  mapa,
+  lng = data_map$long,
+  lat = data_map$lat,
+  radius = normalizar_radio(data_map$mean_points, min_radio = 3, max_radio = 25),
+  color = "#B36936",
+  fillOpacity = 0.6,
+  #When the user clicks on the bubble, the following information is shown:
+  popup = paste0(
+    "Country: ", data_map$country_clean, "<br>",
+    "Mean cup points: ", round(data_map$mean_points,2), "<br>",
+    "Standard Deviation: ", round(data_map$sd_points,2), "<br>",
+    "Minimum cup point: ", round(data_map$min_point,2), "<br>",
+    "Maximum cup point: ", round(data_map$max_point,2), "<br>",
+    "Number of products: ", data_map$n_prod
+  )
+)
+
+mapa <- addLegend(
+  mapa,
+  position = "bottomright",
+  colors = "#B36936",
+  labels = "Bubble size = Mean coffee cup score",
+  opacity = 0.6,
+  title = "Interpretation"
+)
+
+mapa
+```
+**Brief Explanation of the code:**
+
+We have used the following packages:
+
+- Leaflet: to create interactive maps.
+- Rnaturalearth: this gave us the world country boundaries and the centroids, where the bubble is placed.
+- Sf: to handle spatial objects, like coordinates, this was mainly implemented because it gives R the structure to draw the map, calculate the centroids, the atributes, and other characteristics of the world map.
+- dplyr: to help us manipulate the data.
+
+This plot requires from our Coffee Data: 
+
+- country_of_origin
+- total_cup_points
+
+The first thing was to load the world country shapes, after that, we computed the centroids and each bubble was placed with a radius proportional to the total_cup_points calculated for each country.
+
+**Interpretation of the graph:** 
+This is an overview of where high score coffees are produced around the world. 
+It is possible to see that the biggest bubbles are located on ____ with values __ respectively.
+
+On the other hand, the lowest scores appear ___
+
+### Plot 2
+
+Radar chart or Spider chart, that compares some key sensory attributes of coffee: aroma, flavor,
+aftertaste, acidity, body, balance, uniformity, clean_cup, and sweetness. 
+
+```{r}
+
+library(dplyr)
+library(fmsb)
+
+set.seed(1234)
+df_spyder <- coffee_ratings |> 
+  slice_sample(n = 3) |> 
+  mutate(label = paste0(species, " - ", country_of_origin))
+
+
+filas <- c("max", "min", df_spyder$label)
+  
+  
+df_spyder <- df_spyder |> 
+  dplyr::select(aroma:sweetness) 
+
+df_spyder <- rbind(rep(10,9) , rep(0,9) , df_spyder) |> as.data.frame()
+
+
+rownames(df_spyder) <- filas
+
+colors_border=c( rgb(0.2,0.5,0.5,0.9), rgb(0.8,0.2,0.5,0.9) , rgb(0.7,0.5,0.1,0.9) )
+colors_in=c( rgb(0.2,0.5,0.5,0.1), rgb(0.8,0.2,0.5,0.1) , rgb(0.7,0.5,0.1,0.1) )
+
+radarchart(df_spyder, axistype = 1,
+           pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
+           #custom the grid
+           cglcol="grey", cglty=1, axislabcol="grey", caxislabels=seq(0,10,2), cglwd=0.8,
+           #custom labels
+           vlcex=0.8 )
+
+legend(x=0.9, y=1, legend = rownames(df_spyder[-c(1,2),]), bty = "n", pch=20 , col=colors_border , text.col = "grey30", cex=1, pt.cex=3)
+```
+
+**Brief explanation of the code:**
+
+The following packages were implemented:
+
+- fmsb: this was to create the radar chart as indicated on the provided webpage.
+- RColorBrewer: to generate color palettes.
+
+As this graph compares attributes,and it was recommended to use a maximum of 3 cases to compare, so we randomly choose three cases with the slice_sample function. By fixing the seed at 1234 we obtain three units from Haiti, Myanmar and Mexico. 
+
+To build this spider chart, we first needed to convert the dataset to data.frame, compute minimum and maximum values of each attribute and create a data frame to construct the chart. Its first row is the max values, second row the min values and the following rows the selected coffee samples, then we defined colors using brewer.pal() and alpha() for their transparency.Finally the plot was displayed.
+
+**Interpretation:**
+
+This plot makes it easy to observe how different coffees balance their sensory characteristics.
+
+### Plot 3:
+
+Ridgeline plot that illustrates the distribution of cultivation altitude for each coffee variety.
+
+```{r}
+
+library(ggridges)
+library(dplyr)
+library(ggplot2)
+library(MetBrewer)
+library(glue)
+
+# Flitro las filas donde no hay NAs y creo otro df para hacer la grafica
+coffee_plot3 <- coffee_ratings[!is.na(coffee_ratings$variety) & 
+                                 !is.na(coffee_ratings$altitude_mean_meters), ]
+
+head(coffee_plot3)
+
+# Miro primero maximos y minimos:
+summary(coffee_plot3$altitude_mean_meters)
+
+# AQUI AGREGO LO NECESARIO: poner NA a valores irreales (>3000 m)
+coffee_plot3$altitude_mean_meters[
+  coffee_plot3$altitude_mean_meters > 3000
+] <- NA
+
+# Filtrar nuevamente para quitar esos NA
+coffee_plot3 <- coffee_plot3[!is.na(coffee_plot3$altitude_mean_meters), ]
+
+# Calculo la altitud media segun cada variedad de cafe:
+mean_altitudes <- tapply(
+  coffee_plot3$altitude_mean_meters,
+  coffee_plot3$variety,
+  mean
+)
+
+# Ahora si organizo las variedades de cafe según la media de arriba:
+ordenadas <- names(sort(mean_altitudes))
+
+# Convierto en factor:
+coffee_plot3$variety <- factor(coffee_plot3$variety, levels = ordenadas)
+
+# windows(width = 10, height = 7)
+ggplot(coffee_plot3, aes(
+  x = altitude_mean_meters,
+  y = variety,
+  fill = variety
+)) +
+  geom_density_ridges(alpha = 0.8) +
+  scale_x_continuous(limits = c(0, 3000)) + 
+  scale_fill_manual(values=met.brewer("Java",length(unique(coffee_plot3$variety))))+
+  #Si no quieres java, hay "Hiroshige", "Cassatt2"
+  theme_minimal() +
+  guides(fill = "none") +
+  labs(
+    title = "Altitud de cultivo por variedad de café",
+    x = "Altitud media (m)",
+    y = "Variedad"
+  )
+
+
+
+```
+
+**Brief explanation of the code:**
+
+For this plot we used the following packages:
+
+- ggridges: to create ridgeline density plots.
+- ggplot2: for general plotting.
+- dplyr: for data cleaning and manipulation.
+- MetBrewer: for color palettes.
+- glue: for text formatting.
+
+We required the information from the coums variety and altitude_mean_meters.
+
+To make the plot we started by filtering the missing values, then computed the mean altitude per variety using tapply(), after that, we sorted varieties by their mean and converted them to an ordered factor, and the next part of the code is the adjustment of the graph, describing the axes, curves, add labels, etc. 
+
+
+**Interpretation:**
+This plot reveals how altitude changes across different coffee varieties, an important factor because altitude strongly influences bean quality and flavor development.
+
+
+
+
+
