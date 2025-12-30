@@ -383,7 +383,7 @@ mapa <- leaflet(options = leafletOptions(worldCopyJump = FALSE,
 
 mapa <- addProviderTiles(
   mapa,
-  "Stadia.StamenTonerLite",
+  "CartoDB.Positron",
   options = providerTileOptions(noWrap = TRUE)
 )
 
